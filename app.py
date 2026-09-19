@@ -162,6 +162,22 @@ def decode_protobuf(binary):
         app.logger.error(f"Protobuf decode failed structure mismatch: {e}")
         return None
 
+# ================= NEW: Level API helper =================
+
+def fetch_level_from_api(uid):
+    try:
+        url = f"https://bishal-paswan.vercel.app/bmw?uid={uid}"
+        response = requests.get(url, timeout=15, verify=False)
+        if response.status_code != 200:
+            app.logger.error(f"Level API returned status {response.status_code}")
+            return 0
+        data = response.json()
+        level = data.get("basicInfo", {}).get("level", 0)
+        return int(level)
+    except Exception as e:
+        app.logger.error(f"fetch_level_from_api failed: {e}")
+        return 0
+
 # ================= Main API endpoint =================
 
 @app.route('/bishal', methods=['GET'])
@@ -203,8 +219,12 @@ def handle_requests():
         data_after = json.loads(MessageToJson(after))
         after_like = int(data_after.get('AccountInfo', {}).get('Likes', 0))
         player_uid = int(data_after.get('AccountInfo', {}).get('UID', 0))
+        if player_uid == 0:
+            player_uid = int(uid)
         player_name = str(data_after.get('AccountInfo', {}).get('PlayerNickname', ''))
-        player_level = int(data_after.get('AccountInfo', {}).get('Level', 0))
+
+        # ✅ Level ab naye API se fetch hoga
+        player_level = fetch_level_from_api(player_uid)
 
         like_given = after_like - before_like
         status = 1 if like_given != 0 else 2
